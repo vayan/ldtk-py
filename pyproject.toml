@@ -1,8 +1,11 @@
 [tool.poetry]
 name = "ldtkpy"
-version = "0.9.3"
+version = "0.9.4"
 description = "Load and parse LDtk files, with full types definitions."
 authors = ["Yann Vaillant <va@yan.pm>"]
+readme = "README.md"
+homepage = "https://ldtk.io/api/"
+repository = "https://github.com/vayan/ldtk-py"
 
 [tool.poetry.dependencies]
 python = "*"
