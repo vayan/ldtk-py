@@ -35,13 +35,13 @@ def from_union(fs, x):
     assert False
 
 
-def from_bool(x: Any) -> bool:
-    assert isinstance(x, bool)
+def from_int(x: Any) -> int:
+    assert isinstance(x, int) and not isinstance(x, bool)
     return x
 
 
-def from_int(x: Any) -> int:
-    assert isinstance(x, int) and not isinstance(x, bool)
+def from_bool(x: Any) -> bool:
+    assert isinstance(x, bool)
     return x
 
 
@@ -98,16 +98,17 @@ class LdtkCustomCommand:
 
 
 class AllowedRefs(Enum):
-    """Possible values: `Any`, `OnlySame`, `OnlyTags`"""
+    """Possible values: `Any`, `OnlySame`, `OnlyTags`, `OnlySpecificEntity`"""
 
     ANY = "Any"
     ONLY_SAME = "OnlySame"
+    ONLY_SPECIFIC_ENTITY = "OnlySpecificEntity"
     ONLY_TAGS = "OnlyTags"
 
 
 class EditorDisplayMode(Enum):
-    """Possible values: `Hidden`, `ValueOnly`, `NameAndValue`, `EntityTile`, `Points`,
-    `PointStar`, `PointPath`, `PointPathLoop`, `RadiusPx`, `RadiusGrid`,
+    """Possible values: `Hidden`, `ValueOnly`, `NameAndValue`, `EntityTile`, `LevelTile`,
+    `Points`, `PointStar`, `PointPath`, `PointPathLoop`, `RadiusPx`, `RadiusGrid`,
     `ArrayCountWithLabel`, `ArrayCountNoLabel`, `RefLinkBetweenPivots`,
     `RefLinkBetweenCenters`
     """
@@ -116,6 +117,7 @@ class EditorDisplayMode(Enum):
     ARRAY_COUNT_WITH_LABEL = "ArrayCountWithLabel"
     ENTITY_TILE = "EntityTile"
     HIDDEN = "Hidden"
+    LEVEL_TILE = "LevelTile"
     NAME_AND_VALUE = "NameAndValue"
     POINTS = "Points"
     POINT_PATH = "PointPath"
@@ -175,8 +177,9 @@ class FieldDefinition:
     `.ext`
     """
     accept_file_types: Optional[List[str]]
-    """Possible values: `Any`, `OnlySame`, `OnlyTags`"""
+    """Possible values: `Any`, `OnlySame`, `OnlyTags`, `OnlySpecificEntity`"""
     allowed_refs: AllowedRefs
+    allowed_refs_entity_uid: Optional[int]
     allowed_ref_tags: List[str]
     allow_out_of_level_ref: bool
     """Array max length"""
@@ -196,14 +199,15 @@ class FieldDefinition:
     doc: Optional[str]
     editor_always_show: bool
     editor_cut_long_values: bool
-    """Possible values: `Hidden`, `ValueOnly`, `NameAndValue`, `EntityTile`, `Points`,
-    `PointStar`, `PointPath`, `PointPathLoop`, `RadiusPx`, `RadiusGrid`,
+    """Possible values: `Hidden`, `ValueOnly`, `NameAndValue`, `EntityTile`, `LevelTile`,
+    `Points`, `PointStar`, `PointPath`, `PointPathLoop`, `RadiusPx`, `RadiusGrid`,
     `ArrayCountWithLabel`, `ArrayCountNoLabel`, `RefLinkBetweenPivots`,
     `RefLinkBetweenCenters`
     """
     editor_display_mode: EditorDisplayMode
     """Possible values: `Above`, `Center`, `Beneath`"""
     editor_display_pos: EditorDisplayPos
+    editor_display_scale: float
     """Possible values: `ZigZag`, `StraightArrow`, `CurvedArrow`, `ArrowsLine`, `DashedLine`"""
     editor_link_style: EditorLinkStyle
     editor_show_in_world: bool
@@ -245,6 +249,7 @@ class FieldDefinition:
         type: str,
         accept_file_types: Optional[List[str]],
         allowed_refs: AllowedRefs,
+        allowed_refs_entity_uid: Optional[int],
         allowed_ref_tags: List[str],
         allow_out_of_level_ref: bool,
         array_max_length: Optional[int],
@@ -257,6 +262,7 @@ class FieldDefinition:
         editor_cut_long_values: bool,
         editor_display_mode: EditorDisplayMode,
         editor_display_pos: EditorDisplayPos,
+        editor_display_scale: float,
         editor_link_style: EditorLinkStyle,
         editor_show_in_world: bool,
         editor_text_prefix: Optional[str],
@@ -276,6 +282,7 @@ class FieldDefinition:
         self.type = type
         self.accept_file_types = accept_file_types
         self.allowed_refs = allowed_refs
+        self.allowed_refs_entity_uid = allowed_refs_entity_uid
         self.allowed_ref_tags = allowed_ref_tags
         self.allow_out_of_level_ref = allow_out_of_level_ref
         self.array_max_length = array_max_length
@@ -288,6 +295,7 @@ class FieldDefinition:
         self.editor_cut_long_values = editor_cut_long_values
         self.editor_display_mode = editor_display_mode
         self.editor_display_pos = editor_display_pos
+        self.editor_display_scale = editor_display_scale
         self.editor_link_style = editor_link_style
         self.editor_show_in_world = editor_show_in_world
         self.editor_text_prefix = editor_text_prefix
@@ -312,6 +320,9 @@ class FieldDefinition:
             [from_none, lambda x: from_list(from_str, x)], obj.get("acceptFileTypes")
         )
         allowed_refs = AllowedRefs(obj.get("allowedRefs"))
+        allowed_refs_entity_uid = from_union(
+            [from_none, from_int], obj.get("allowedRefsEntityUid")
+        )
         allowed_ref_tags = from_list(from_str, obj.get("allowedRefTags"))
         allow_out_of_level_ref = from_bool(obj.get("allowOutOfLevelRef"))
         array_max_length = from_union([from_none, from_int], obj.get("arrayMaxLength"))
@@ -324,6 +335,7 @@ class FieldDefinition:
         editor_cut_long_values = from_bool(obj.get("editorCutLongValues"))
         editor_display_mode = EditorDisplayMode(obj.get("editorDisplayMode"))
         editor_display_pos = EditorDisplayPos(obj.get("editorDisplayPos"))
+        editor_display_scale = from_float(obj.get("editorDisplayScale"))
         editor_link_style = EditorLinkStyle(obj.get("editorLinkStyle"))
         editor_show_in_world = from_bool(obj.get("editorShowInWorld"))
         editor_text_prefix = from_union(
@@ -349,6 +361,7 @@ class FieldDefinition:
             type,
             accept_file_types,
             allowed_refs,
+            allowed_refs_entity_uid,
             allowed_ref_tags,
             allow_out_of_level_ref,
             array_max_length,
@@ -361,6 +374,7 @@ class FieldDefinition:
             editor_cut_long_values,
             editor_display_mode,
             editor_display_pos,
+            editor_display_scale,
             editor_link_style,
             editor_show_in_world,
             editor_text_prefix,
@@ -386,6 +400,10 @@ class FieldDefinition:
                 [from_none, lambda x: from_list(from_str, x)], self.accept_file_types
             )
         result["allowedRefs"] = to_enum(AllowedRefs, self.allowed_refs)
+        if self.allowed_refs_entity_uid is not None:
+            result["allowedRefsEntityUid"] = from_union(
+                [from_none, from_int], self.allowed_refs_entity_uid
+            )
         result["allowedRefTags"] = from_list(from_str, self.allowed_ref_tags)
         result["allowOutOfLevelRef"] = from_bool(self.allow_out_of_level_ref)
         if self.array_max_length is not None:
@@ -408,6 +426,7 @@ class FieldDefinition:
             EditorDisplayMode, self.editor_display_mode
         )
         result["editorDisplayPos"] = to_enum(EditorDisplayPos, self.editor_display_pos)
+        result["editorDisplayScale"] = to_float(self.editor_display_scale)
         result["editorLinkStyle"] = to_enum(EditorLinkStyle, self.editor_link_style)
         result["editorShowInWorld"] = from_bool(self.editor_show_in_world)
         if self.editor_text_prefix is not None:
@@ -758,8 +777,8 @@ class EntityDefinition:
 
 
 class EnumValueDefinition:
-    """An array of 4 Int values that refers to the tile in the tileset image: `[ x, y, width,
-    height ]`
+    """**WARNING**: this deprecated value will be *removed* completely on version 1.4.0+
+    Replaced by: `tileRect`
     """
 
     tile_src_rect: Optional[List[int]]
@@ -767,8 +786,12 @@ class EnumValueDefinition:
     color: int
     """Enum value"""
     id: str
-    """The optional ID of the tile"""
+    """**WARNING**: this deprecated value will be *removed* completely on version 1.4.0+
+    Replaced by: `tileRect`
+    """
     tile_id: Optional[int]
+    """Optional tileset rectangle to represents this value"""
+    tile_rect: Optional[TilesetRectangle]
 
     def __init__(
         self,
@@ -776,11 +799,13 @@ class EnumValueDefinition:
         color: int,
         id: str,
         tile_id: Optional[int],
+        tile_rect: Optional[TilesetRectangle],
     ) -> None:
         self.tile_src_rect = tile_src_rect
         self.color = color
         self.id = id
         self.tile_id = tile_id
+        self.tile_rect = tile_rect
 
     @staticmethod
     def from_dict(obj: Any) -> "EnumValueDefinition":
@@ -791,7 +816,10 @@ class EnumValueDefinition:
         color = from_int(obj.get("color"))
         id = from_str(obj.get("id"))
         tile_id = from_union([from_none, from_int], obj.get("tileId"))
-        return EnumValueDefinition(tile_src_rect, color, id, tile_id)
+        tile_rect = from_union(
+            [from_none, TilesetRectangle.from_dict], obj.get("tileRect")
+        )
+        return EnumValueDefinition(tile_src_rect, color, id, tile_id, tile_rect)
 
     def to_dict(self) -> dict:
         result: dict = {}
@@ -803,6 +831,10 @@ class EnumValueDefinition:
         result["id"] = from_str(self.id)
         if self.tile_id is not None:
             result["tileId"] = from_union([from_none, from_int], self.tile_id)
+        if self.tile_rect is not None:
+            result["tileRect"] = from_union(
+                [from_none, lambda x: to_class(TilesetRectangle, x)], self.tile_rect
+            )
         return result
 
 
@@ -940,6 +972,18 @@ class AutoLayerRuleDefinition:
     tile_ids: List[int]
     """Defines how tileIds array is used Possible values: `Single`, `Stamp`"""
     tile_mode: TileMode
+    """Max random offset for X tile pos"""
+    tile_random_x_max: int
+    """Min random offset for X tile pos"""
+    tile_random_x_min: int
+    """Max random offset for Y tile pos"""
+    tile_random_y_max: int
+    """Min random offset for Y tile pos"""
+    tile_random_y_min: int
+    """Tile X offset"""
+    tile_x_offset: int
+    """Tile Y offset"""
+    tile_y_offset: int
     """Unique Int identifier"""
     uid: int
     """X cell coord modulo"""
@@ -970,6 +1014,12 @@ class AutoLayerRuleDefinition:
         size: int,
         tile_ids: List[int],
         tile_mode: TileMode,
+        tile_random_x_max: int,
+        tile_random_x_min: int,
+        tile_random_y_max: int,
+        tile_random_y_min: int,
+        tile_x_offset: int,
+        tile_y_offset: int,
         uid: int,
         x_modulo: int,
         x_offset: int,
@@ -993,6 +1043,12 @@ class AutoLayerRuleDefinition:
         self.size = size
         self.tile_ids = tile_ids
         self.tile_mode = tile_mode
+        self.tile_random_x_max = tile_random_x_max
+        self.tile_random_x_min = tile_random_x_min
+        self.tile_random_y_max = tile_random_y_max
+        self.tile_random_y_min = tile_random_y_min
+        self.tile_x_offset = tile_x_offset
+        self.tile_y_offset = tile_y_offset
         self.uid = uid
         self.x_modulo = x_modulo
         self.x_offset = x_offset
@@ -1021,6 +1077,12 @@ class AutoLayerRuleDefinition:
         size = from_int(obj.get("size"))
         tile_ids = from_list(from_int, obj.get("tileIds"))
         tile_mode = TileMode(obj.get("tileMode"))
+        tile_random_x_max = from_int(obj.get("tileRandomXMax"))
+        tile_random_x_min = from_int(obj.get("tileRandomXMin"))
+        tile_random_y_max = from_int(obj.get("tileRandomYMax"))
+        tile_random_y_min = from_int(obj.get("tileRandomYMin"))
+        tile_x_offset = from_int(obj.get("tileXOffset"))
+        tile_y_offset = from_int(obj.get("tileYOffset"))
         uid = from_int(obj.get("uid"))
         x_modulo = from_int(obj.get("xModulo"))
         x_offset = from_int(obj.get("xOffset"))
@@ -1044,6 +1106,12 @@ class AutoLayerRuleDefinition:
             size,
             tile_ids,
             tile_mode,
+            tile_random_x_max,
+            tile_random_x_min,
+            tile_random_y_max,
+            tile_random_y_min,
+            tile_x_offset,
+            tile_y_offset,
             uid,
             x_modulo,
             x_offset,
@@ -1073,6 +1141,12 @@ class AutoLayerRuleDefinition:
         result["size"] = from_int(self.size)
         result["tileIds"] = from_list(from_int, self.tile_ids)
         result["tileMode"] = to_enum(TileMode, self.tile_mode)
+        result["tileRandomXMax"] = from_int(self.tile_random_x_max)
+        result["tileRandomXMin"] = from_int(self.tile_random_x_min)
+        result["tileRandomYMax"] = from_int(self.tile_random_y_max)
+        result["tileRandomYMin"] = from_int(self.tile_random_y_min)
+        result["tileXOffset"] = from_int(self.tile_x_offset)
+        result["tileYOffset"] = from_int(self.tile_y_offset)
         result["uid"] = from_int(self.uid)
         result["xModulo"] = from_int(self.x_modulo)
         result["xOffset"] = from_int(self.x_offset)
@@ -2341,6 +2415,7 @@ class BgPos(Enum):
     CONTAIN = "Contain"
     COVER = "Cover"
     COVER_DIRTY = "CoverDirty"
+    REPEAT = "Repeat"
     UNSCALED = "Unscaled"
 
 
@@ -2416,7 +2491,7 @@ class Level:
     bg_pivot_y: float
     """An enum defining the way the background image (if any) is positioned on the level. See
     `__bgPos` for resulting position info. Possible values: &lt;`null`&gt;, `Unscaled`,
-    `Contain`, `Cover`, `CoverDirty`
+    `Contain`, `Cover`, `CoverDirty`, `Repeat`
     """
     level_bg_pos: Optional[BgPos]
     """The *optional* relative path to the level background image."""
@@ -2648,9 +2723,9 @@ class WorldLayout(Enum):
 
 
 class World:
-    """**IMPORTANT**: this type is not used *yet* in current LDtk version. It's only presented
-    here as a preview of a planned feature.  A World contains multiple levels, and it has its
-    own layout settings.
+    """**IMPORTANT**: this type is available as a preview. You can rely on it to update your
+    importers, for when it will be officially available.  A World contains multiple levels,
+    and it has its own layout settings.
     """
 
     """Default new level height"""
@@ -3088,6 +3163,8 @@ class LdtkJSON:
     backup_limit: int
     """If TRUE, an extra copy of the project will be created in a sub folder, when saving."""
     backup_on_save: bool
+    """Target relative path to store backup files"""
+    backup_rel_path: Optional[str]
     """Project background color"""
     bg_color: str
     """An array of command lines that can be ran manually by the user"""
@@ -3112,6 +3189,8 @@ class LdtkJSON:
     default_pivot_y: float
     """A structure containing all the definitions of this project"""
     defs: Definitions
+    """If the project isn't in MultiWorlds mode, this is the IID of the internal "dummy" World."""
+    dummy_world_iid: str
     """If TRUE, the exported PNGs will include the level background (color or image)."""
     export_level_bg: bool
     """**WARNING**: this deprecated value is no longer exported since version 0.9.3  Replaced
@@ -3187,17 +3266,15 @@ class LdtkJSON:
     `GridVania`, `LinearHorizontal`, `LinearVertical`
     """
     world_layout: Optional[WorldLayout]
-    """This array is not used yet in current LDtk version (so, for now, it's always
-    empty).<br/><br/>In a later update, it will be possible to have multiple Worlds in a
-    single project, each containing multiple Levels.<br/><br/>What will change when "Multiple
-    worlds" support will be added to LDtk:<br/><br/> - in current version, a LDtk project
-    file can only contain a single world with multiple levels in it. In this case, levels and
-    world layout related settings are stored in the root of the JSON.<br/> - after the
-    "Multiple worlds" update, there will be a `worlds` array in root, each world containing
-    levels and layout settings. Basically, it's pretty much only about moving the `levels`
-    array to the `worlds` array, along with world layout related values (eg. `worldGridWidth`
-    etc).<br/><br/>If you want to start supporting this future update easily, please refer to
-    this documentation: https://github.com/deepnight/ldtk/issues/231
+    """This array will be empty, unless you enable the Multi-Worlds in the project advanced
+    settings.<br/><br/> - in current version, a LDtk project file can only contain a single
+    world with multiple levels in it. In this case, levels and world layout related settings
+    are stored in the root of the JSON.<br/> - with "Multi-worlds" enabled, there will be a
+    `worlds` array in root, each world containing levels and layout settings. Basically, it's
+    pretty much only about moving the `levels` array to the `worlds` array, along with world
+    layout related values (eg. `worldGridWidth` etc).<br/><br/>If you want to start
+    supporting this future update easily, please refer to this documentation:
+    https://github.com/deepnight/ldtk/issues/231
     """
     worlds: List[World]
 
@@ -3207,6 +3284,7 @@ class LdtkJSON:
         app_build_id: float,
         backup_limit: int,
         backup_on_save: bool,
+        backup_rel_path: Optional[str],
         bg_color: str,
         custom_commands: List[LdtkCustomCommand],
         default_grid_size: int,
@@ -3216,6 +3294,7 @@ class LdtkJSON:
         default_pivot_x: float,
         default_pivot_y: float,
         defs: Definitions,
+        dummy_world_iid: str,
         export_level_bg: bool,
         export_png: Optional[bool],
         export_tiled: bool,
@@ -3242,6 +3321,7 @@ class LdtkJSON:
         self.app_build_id = app_build_id
         self.backup_limit = backup_limit
         self.backup_on_save = backup_on_save
+        self.backup_rel_path = backup_rel_path
         self.bg_color = bg_color
         self.custom_commands = custom_commands
         self.default_grid_size = default_grid_size
@@ -3251,6 +3331,7 @@ class LdtkJSON:
         self.default_pivot_x = default_pivot_x
         self.default_pivot_y = default_pivot_y
         self.defs = defs
+        self.dummy_world_iid = dummy_world_iid
         self.export_level_bg = export_level_bg
         self.export_png = export_png
         self.export_tiled = export_tiled
@@ -3282,6 +3363,7 @@ class LdtkJSON:
         app_build_id = from_float(obj.get("appBuildId"))
         backup_limit = from_int(obj.get("backupLimit"))
         backup_on_save = from_bool(obj.get("backupOnSave"))
+        backup_rel_path = from_union([from_none, from_str], obj.get("backupRelPath"))
         bg_color = from_str(obj.get("bgColor"))
         custom_commands = from_list(
             LdtkCustomCommand.from_dict, obj.get("customCommands")
@@ -3297,6 +3379,7 @@ class LdtkJSON:
         default_pivot_x = from_float(obj.get("defaultPivotX"))
         default_pivot_y = from_float(obj.get("defaultPivotY"))
         defs = Definitions.from_dict(obj.get("defs"))
+        dummy_world_iid = from_str(obj.get("dummyWorldIid"))
         export_level_bg = from_bool(obj.get("exportLevelBg"))
         export_png = from_union([from_none, from_bool], obj.get("exportPng"))
         export_tiled = from_bool(obj.get("exportTiled"))
@@ -3325,6 +3408,7 @@ class LdtkJSON:
             app_build_id,
             backup_limit,
             backup_on_save,
+            backup_rel_path,
             bg_color,
             custom_commands,
             default_grid_size,
@@ -3334,6 +3418,7 @@ class LdtkJSON:
             default_pivot_x,
             default_pivot_y,
             defs,
+            dummy_world_iid,
             export_level_bg,
             export_png,
             export_tiled,
@@ -3366,6 +3451,10 @@ class LdtkJSON:
         result["appBuildId"] = to_float(self.app_build_id)
         result["backupLimit"] = from_int(self.backup_limit)
         result["backupOnSave"] = from_bool(self.backup_on_save)
+        if self.backup_rel_path is not None:
+            result["backupRelPath"] = from_union(
+                [from_none, from_str], self.backup_rel_path
+            )
         result["bgColor"] = from_str(self.bg_color)
         result["customCommands"] = from_list(
             lambda x: to_class(LdtkCustomCommand, x), self.custom_commands
@@ -3383,6 +3472,7 @@ class LdtkJSON:
         result["defaultPivotX"] = to_float(self.default_pivot_x)
         result["defaultPivotY"] = to_float(self.default_pivot_y)
         result["defs"] = to_class(Definitions, self.defs)
+        result["dummyWorldIid"] = from_str(self.dummy_world_iid)
         result["exportLevelBg"] = from_bool(self.export_level_bg)
         if self.export_png is not None:
             result["exportPng"] = from_union([from_none, from_bool], self.export_png)
